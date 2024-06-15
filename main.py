@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify, render_template
 from predict import predict_alphabet
+from flask_cors import CORS
 import os
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/predict', methods=['GET', 'POST'])
 def predict():
