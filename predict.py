@@ -13,6 +13,15 @@ def extract_mfcc(data, sample_rate, n_mfcc=20):
     mfcc = np.mean(librosa.feature.mfcc(y=data, sr=sample_rate, n_mfcc=n_mfcc, n_fft=n_fft, hop_length=hop_length).T, axis=0)
     return mfcc
 
+def add_noise(data, noise_factor=0.035):
+    noise = np.random.randn(len(data))
+    augmented_data = data + noise_factor * noise
+    return augmented_data
+
+def shift_audio(data, shift=1000):
+    shifted_data = np.roll(data, shift)
+    return shifted_data
+
 # Fungsi untuk mendapatkan fitur dari file audio
 def get_features(path):
     try:
@@ -24,14 +33,19 @@ def get_features(path):
 
         # Mengekstrak MFCC dari data asli
         mfcc_original = extract_mfcc(data, sample_rate)
+        
+        # Augmentasi data: noise dan shift
+        data_with_noise = add_noise(data)
+        data_shifted = shift_audio(data)
+        
+        # Mengekstrak MFCC dari data yang telah di-augmentasi
+        mfcc_noise = extract_mfcc(data_with_noise, sample_rate)
+        mfcc_shift = extract_mfcc(data_shifted, sample_rate)
 
-        # Pastikan jumlah fitur yang dihasilkan sesuai dengan yang diharapkan
-        features = mfcc_original.reshape(1, -1)
+        # Menyusun fitur
+        features = np.vstack((mfcc_original, mfcc_noise, mfcc_shift))
 
-        # Normalisasi fitur
-        features_scaled = scaler.transform(features)
-
-        return features_scaled
+        return features
     except Exception as e:
         print(f"Error processing {path}: {e}")
         return None
@@ -41,7 +55,13 @@ def predict_alphabet(audio_path):
     if features is None:
         return "Error processing audio file"
     
+    # Normalisasi fitur
+    features = scaler.transform(features)
+    
+    # Prediksi menggunakan model
     predictions = model.predict(features)
+    
+    # Mengambil prediksi yang paling umum
     most_common_prediction = np.bincount(predictions).argmax()
     predicted_phonic = label_encoder.inverse_transform([most_common_prediction])[0]
     
